@@ -1,1 +1,6 @@
 # Created by .ignore support plugin (hsz.mobi)
+.idea/.name
+.idea/modules.xml
+.idea/os-ex2.iml
+.idea/workspace.xml
+cmake-build-debug/

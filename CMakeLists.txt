@@ -3,4 +3,4 @@ project(ex1)
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(ex2 ex2_inp.cpp)
+add_executable(ex2 ex2_inp.c)
