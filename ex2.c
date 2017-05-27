@@ -1,9 +1,9 @@
-/**********************************************
- * Student Name: Daniel Marzayev
- * Student ID: 318687134
- * Course Exercise Group: 04
- * Exercise Name: Exercise 1
- *********************************************/
+/********************************
+* Student name: Noam Simon      *
+* Student ID: 208388850         *
+* Course Exercise Group: 04     *
+* Exercise name: Exercise 2     *
+********************************/
 
 #include <signal.h>
 #include <stdio.h>
@@ -17,34 +17,32 @@
 #define EXEC_ERROR "failed to exec"
 #define SIGACTION_ERROR "ERROR: sigaction"
 
-/**
- * signal alarm handler fundtion.
- * @param sigNum - the signal number.
- * @param info - the signal info.
- * @param ptr - function pointer.
- */
 void sigAlarmHandler(int sigNum, siginfo_t *info, void *ptr);
 
-/**
- * initialize the signals handlers.
- */
-void SignalsHandlersInitialize();
+void initializeSignalsHandler();
 
 int terminationTime;
 
 //the two child processes
 pid_t firstProcessPid, secondProcessPid;
 
+/*******************************************************************************
+* function name : main                                                         *
+* input : the terminationTime - the time the program should run.               *
+* output :                                                                     *
+* explanation : create 2 process of ex2_inp and ex2_upd, by fork and exec,     *
+*               and communicate between them.                                  *
+*******************************************************************************/
 int main(int argc, char *argv[]) {
     terminationTime = atoi(argv[1]);
 
     //initial the signals handlers.
-    SignalsHandlersInitialize();
+    initializeSignalsHandler();
 
     //create child process for executing ex2inp.
     if ((firstProcessPid = fork()) == 0) {
-        //executing ex2inp process.
 
+        //executing ex2inp process.
         execlp("./ex2_inp.out", "./ex2_inp.out", NULL);
         write(STDERR_FILENO, EXEC_ERROR, strlen(EXEC_ERROR));
         exit(EXIT_FAILURE);
@@ -60,6 +58,7 @@ int main(int argc, char *argv[]) {
             execlp("./ex2_upd.out", "./ex2_upd.out", arg, NULL);
             write(STDERR_FILENO, EXEC_ERROR, strlen(EXEC_ERROR));
             exit(EXIT_FAILURE);
+
         } else if (secondProcessPid > 0) {
             sleep(1);
             alarm(terminationTime);
@@ -71,13 +70,24 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+/**************************************************************************************
+* function name : sigAlarmHandler                                                     *
+* input : signal number, information number, and a pointer.                           *
+* output :                                                                            *
+* explanation :  handler the alarm signal.                                            *
+**************************************************************************************/
 void sigAlarmHandler(int sigNum, siginfo_t *info, void *ptr) {
     //send to ex2upd SIGINT and ex2upd will send to ex2inp SIGINT.
     kill(secondProcessPid, SIGINT);
 }
 
-void SignalsHandlersInitialize() {
-    //initialize the sigaction struct.
+/****************************************************************************
+* function name : initializeSignalsHandler                                  *
+* input :                                                                   *
+* output : void.                                                            *
+* explanation : initialize the SignalsHandler of the following signals      *
+****************************************************************************/
+void initializeSignalsHandler() {
     struct sigaction sigAct;
     //initialize the blockSet.
     sigset_t blockMask;
@@ -88,6 +98,8 @@ void SignalsHandlersInitialize() {
 
     //attach the SIGALRM handler to the signal.
     sigAct.sa_sigaction = sigAlarmHandler;
-    if (sigaction(SIGALRM, &sigAct, NULL) != 0)
+    if (sigaction(SIGALRM, &sigAct, NULL) != 0) {
         write(STDERR_FILENO, SIGACTION_ERROR, strlen(SIGACTION_ERROR));
+        exit(EXIT_FAILURE);
+    }
 }

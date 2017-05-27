@@ -24,6 +24,7 @@
 #define INTPUT_FILE "output.txt"
 #define DUP_ERROR "failed dup.\n"
 #define OPEN_FILE_ERROR "failed to open file for read.\n"
+
 int oldSTDIN;
 
 void printBoardGraphicFormat(int *pInt);
@@ -40,17 +41,17 @@ void fromStringToMatrix(char* stringBroad, int board[CELLS_NUM]);
 * function name : main                                                         *
 * input :                                                                      *
 * output :                                                                     *
-* explanation :                                                                *
+* explanation : print the board in graphic format when sigUser1 is sent.       *
 *******************************************************************************/
 int main(int argc, char* argv[]) {
-//    int board[] = {2,4,0,0,2,2,0,16,0,0,4,0,16,0,16,0};
-//    printBoardGraphicFormat(board);
-//    return 1;
+    // open the input file.
     int fd = open(INTPUT_FILE, O_CREAT | O_RDONLY, 0666);
     if (fd < 0) {
         write(STDERR_FILENO, OPEN_FILE_ERROR, sizeof(OPEN_FILE_ERROR));
         exit(EXIT_FAILURE);
     }
+
+    //
     if (dup2(fd, 0) < 0) {
         write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
         exit(EXIT_FAILURE);
@@ -63,6 +64,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    // initail the signal handlers.
     initializeSignalsHandler();
 
     //waiting for signals.
@@ -93,6 +95,12 @@ void fromStringToMatrix(char* stringBroad, int board[CELLS_NUM]){
     }
 }
 
+/**************************************************************************************
+* function name : sigIntHandler                                                       *
+* input : signal number, information number, and a pointer.                           *
+* output :                                                                            *
+* explanation :  handler the int signal.                                              *
+**************************************************************************************/
 void sigIntHandler(int signum, siginfo_t *info, void *ptr) {
     if (write(STDOUT_FILENO, EXIT, strlen(EXIT)) < 0) {
         write(STDERR_FILENO, WRITE_TO_STDOUT_ERROR, strlen(WRITE_TO_STDOUT_ERROR));
@@ -106,6 +114,13 @@ void sigIntHandler(int signum, siginfo_t *info, void *ptr) {
     close(oldSTDIN);
     exit(EXIT_SUCCESS);
 }
+
+/**************************************************************************************
+* function name : sigUsr1Handler                                                      *
+* input : signal number, information number, and a pointer.                           *
+* output :                                                                            *
+* explanation :  handler the user1 signal.                                            *
+**************************************************************************************/
 void sigUsr1Handler(int signum, siginfo_t *info, void *ptr) {
     char lineFormat[MAX_LENGTH];
     //read the game board as line format from stdin.
@@ -181,6 +196,7 @@ void printBoardGraphicFormat(int *board) {
     }
     strcat(graphicFormat, "\n\0");
 
+    // print the board in the graphic format to STDOUT.
     if (write(STDOUT_FILENO, graphicFormat, strlen(graphicFormat)) < 0){
         write(STDERR_FILENO, WRITE_TO_STDOUT_ERROR, strlen(WRITE_TO_STDOUT_ERROR));
         exit(EXIT_FAILURE);

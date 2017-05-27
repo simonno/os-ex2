@@ -2,7 +2,7 @@
 * Student name: Noam Simon      *
 * Student ID: 208388850         *
 * Course Exercise Group: 04     *
-* Exercise name: Exercise 2-inp *
+* Exercise name: Exercise 2-upd *
 ********************************/
 
 #include <stdlib.h>
@@ -67,9 +67,9 @@ int board[COLS][ROWS] = {0};
 
 /*******************************************************************************
 * function name : main                                                         *
-* input :                                                                      *
+* input :  a ip process of the specific process to send him a user1 sig.       *
 * output :                                                                     *
-* explanation :                                                                *
+* explanation :    run the game.                                               *
 *******************************************************************************/
 int main(int argc, char* argv[]) {
     if (argc < 2){
@@ -99,6 +99,12 @@ int main(int argc, char* argv[]) {
     run();
 }
 
+/**************************************************************************************
+* function name : run                                                                 *
+* input :                                                                             *
+* output :                                                                            *
+* explanation :  run the game, get a input from the user that represent the movement. *
+**************************************************************************************/
 void run() {
     while (1) {
         // get a move direction which represent by a char.
@@ -111,6 +117,12 @@ void run() {
     }
 }
 
+/**************************************************************************************
+* function name : sigAlarmHandler                                                     *
+* input : signal number, information number, and a pointer.                           *
+* output :                                                                            *
+* explanation :  handler the alarm signal.                                            *
+**************************************************************************************/
 void sigAlarmHandler(int sigNum, siginfo_t *info, void *ptr) {
     addCellOf2();
     waitingVal = rand_1_5();
@@ -120,6 +132,12 @@ void sigAlarmHandler(int sigNum, siginfo_t *info, void *ptr) {
     kill(pidForSendingSig, SIGUSR1);
 }
 
+/**************************************************************************************
+* function name : sigIntHandler                                                       *
+* input : signal number, information number, and a pointer.                           *
+* output :                                                                            *
+* explanation :  handler the int signal.                                              *
+**************************************************************************************/
 void sigIntHandler(int sigNum, siginfo_t *info, void *ptr) {
     if (dup2(oldSTDOUT, STDOUT_FILENO) < 0) {
         write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
@@ -131,6 +149,12 @@ void sigIntHandler(int sigNum, siginfo_t *info, void *ptr) {
     exit(EXIT_SUCCESS);
 }
 
+/**************************************************************************************
+* function name : sigUsr1Handler                                                      *
+* input : signal number, information number, and a pointer.                           *
+* output :                                                                            *
+* explanation :  handler the user1 signal.                                            *
+**************************************************************************************/
 void sigUsr1Handler(int sigNum, siginfo_t *info, void *ptr) {
     //check the move char and update with the appropriate or create new game.
     switch (moveDirection) {
@@ -154,6 +178,12 @@ void sigUsr1Handler(int sigNum, siginfo_t *info, void *ptr) {
     }
 }
 
+/**************************************************************************************
+* function name : MoveRight                                                           *
+* input :                                                                             *
+* output :                                                                            *
+* explanation :  move the board right.                                                *
+**************************************************************************************/
 void MoveRight() {
     int i, j, rightmost0, lastMarge;
     
@@ -187,6 +217,12 @@ void MoveRight() {
     }
 }
 
+/**************************************************************************************
+* function name : MoveDown                                                            *
+* input :                                                                             *
+* output :                                                                            *
+* explanation :  move the board down.                                                 *
+**************************************************************************************/
 void MoveDown() {
     int i, j, lower0, lastMarge;
 
@@ -220,6 +256,12 @@ void MoveDown() {
     }
 }
 
+/**************************************************************************************
+* function name : MoveUp                                                              *
+* input :                                                                             *
+* output :                                                                            *
+* explanation :  move the board up.                                                   *
+**************************************************************************************/
 void MoveUp() {
     int i, j, upper0, lastMarge;
 
@@ -253,7 +295,12 @@ void MoveUp() {
     }
 }
 
-
+/**************************************************************************************
+* function name : MoveLeft                                                            *
+* input :                                                                             *
+* output :                                                                            *
+* explanation :  move the board left.                                                 *
+**************************************************************************************/
 void MoveLeft() {
     int i, j, leftmost0, lastMarge;
 
@@ -286,6 +333,14 @@ void MoveLeft() {
         }
     }
 }
+
+/**************************************************************************************
+* function name : resetGame                                                           *
+* input :                                                                             *
+* output :                                                                            *
+* explanation : resetGame - initial new board , print the board in a line format,     *
+*               send a user1 sig to the specific process. and set new alarm.          *
+**************************************************************************************/
 void resetGame() {
     waitingVal = rand_1_5();
     initializeBoard();
