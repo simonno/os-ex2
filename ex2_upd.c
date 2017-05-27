@@ -261,12 +261,12 @@ void MoveLeft() {
 }
 void resetGame() {
     waitingVal = rand_1_5();
-    alarm(waitingVal);
     initializeBoard();
-    
+
     printBoardLineFormat();
     // send a SIGUSR1 to the specific process.
     kill(pidForSendingSig, SIGUSR1);
+    alarm(waitingVal);
 }
 
 /***************************************************************************
@@ -358,6 +358,7 @@ void printBoardLineFormat() {
             strcat(lineFormat, buffer);
         }
     }
+    strcat(lineFormat, "\n");
     printToStdout(lineFormat, strlen(lineFormat));
 }
 
