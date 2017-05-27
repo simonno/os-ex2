@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #define WIN_VAL 2024
 #define ROWS 4
@@ -21,6 +22,9 @@
 #define LOSE_STRING "Game Over!\n"
 #define WRITE_TO_STDOUT_ERROR "failed writing to stdout.\n"
 #define SIGACTION_ERROR "sigaction error.\n"
+#define OUTPUT_FILE "output.txt"
+#define DUP_ERROR "failed dup.\n"
+#define OPEN_FILE_ERROR "failed to open file for read\n"
 
 
 unsigned int rand_1_5();
@@ -58,6 +62,7 @@ void MoveLeft() ;
 int pidForSendingSig;
 unsigned int waitingVal;
 char moveDirection;
+int oldSTDOUT;
 int board[COLS][ROWS] = {0};
 
 /*******************************************************************************
@@ -68,6 +73,22 @@ int board[COLS][ROWS] = {0};
 *******************************************************************************/
 int main(int argc, char* argv[]) {
     if (argc < 2){
+        exit(EXIT_FAILURE);
+    }
+
+    int fd = open(OUTPUT_FILE, O_CREAT | O_WRONLY | O_TRUNC, 0666);
+    if (fd < 0) {
+        write(STDERR_FILENO, OPEN_FILE_ERROR, sizeof(OPEN_FILE_ERROR));
+        exit(EXIT_FAILURE);
+    }
+    if (dup2(fd, STDOUT_FILENO) < 0) {
+        write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
+        exit(EXIT_FAILURE);
+    }
+
+    //save the old stdout.
+    if ((oldSTDOUT = dup(STDOUT_FILENO)) < 0) {
+        write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
         exit(EXIT_FAILURE);
     }
     pidForSendingSig = atoi(argv[1]);
@@ -100,7 +121,13 @@ void sigAlarmHandler(int sigNum, siginfo_t *info, void *ptr) {
 }
 
 void sigIntHandler(int sigNum, siginfo_t *info, void *ptr) {
+    if (dup2(oldSTDOUT, STDOUT_FILENO) < 0) {
+        write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
+        exit(EXIT_FAILURE);
+    }
+    close(oldSTDOUT);
     kill(pidForSendingSig, SIGINT);
+    unlink(OUTPUT_FILE);
     exit(EXIT_SUCCESS);
 }
 

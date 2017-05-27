@@ -10,16 +10,22 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #define ROWS 4
 #define COLS 4
 #define CELLS_NUM 16
 #define MAX_LENGTH 112
-#define BOARD_LENGTH 116
-#define EXIT "BYE BYE"
+#define BOARD_LENGTH 256
+#define EXIT "BYE BYE\n"
 #define READ_FROM_STDIN_ERROR "failed reading from stdin.\n"
 #define WRITE_TO_STDOUT_ERROR "failed writing to stdout.\n"
 #define SIGACTION_ERROR "sigaction error.\n"
+#define INTPUT_FILE "output.txt"
+#define DUP_ERROR "failed dup.\n"
+#define OPEN_FILE_ERROR "failed to open file for read.\n"
+int oldSTDIN;
+
 void printBoardGraphicFormat(int *pInt);
 
 void initializeSignalsHandler();
@@ -37,18 +43,32 @@ void fromStringToMatrix(char* stringBroad, int board[CELLS_NUM]);
 * explanation :                                                                *
 *******************************************************************************/
 int main(int argc, char* argv[]) {
-    //sigUsr1Handler(0, NULL, NULL);
+//    int board[] = {2,4,0,0,2,2,0,16,0,0,4,0,16,0,16,0};
+//    printBoardGraphicFormat(board);
+//    return 1;
+    int fd = open(INTPUT_FILE, O_CREAT | O_RDONLY, 0666);
+    if (fd < 0) {
+        write(STDERR_FILENO, OPEN_FILE_ERROR, sizeof(OPEN_FILE_ERROR));
+        exit(EXIT_FAILURE);
+    }
+    if (dup2(fd, 0) < 0) {
+        write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
+        exit(EXIT_FAILURE);
+    }
+
+    //save the old stdin.
+    oldSTDIN = dup(STDIN_FILENO);
+    if (oldSTDIN < 0) {
+        write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
+        exit(EXIT_FAILURE);
+    }
+
     initializeSignalsHandler();
-    int board[CELLS_NUM] = {2,4,0,0,2,2,0,16,0,0,4,0,16,0,16,0};
-    printBoardGraphicFormat(board);
 
-    char str[40]  = "2,4,0,0,2024,2,0,32,0,128,4,0,16,0,16,0";
-    int board3[CELLS_NUM];
-    fromStringToMatrix(str, board3);
-    printBoardGraphicFormat(board3);
-
-    int board2[CELLS_NUM] = {2,4,0,0,2024,2,0,32,0,128,4,0,16,0,16,0};
-    printBoardGraphicFormat(board2);
+    //waiting for signals.
+    while (1) {
+        pause();
+    }
 }
 
 /*******************************************************************************
@@ -74,10 +94,16 @@ void fromStringToMatrix(char* stringBroad, int board[CELLS_NUM]){
 }
 
 void sigIntHandler(int signum, siginfo_t *info, void *ptr) {
-    if (write(STDOUT_FILENO, EXIT, strlen(EXIT))) {
+    if (write(STDOUT_FILENO, EXIT, strlen(EXIT)) < 0) {
         write(STDERR_FILENO, WRITE_TO_STDOUT_ERROR, strlen(WRITE_TO_STDOUT_ERROR));
         exit(EXIT_FAILURE);
     }
+
+    if (dup2(oldSTDIN, STDIN_FILENO) < 0) {
+        write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
+        exit(EXIT_FAILURE);
+    }
+    close(oldSTDIN);
     exit(EXIT_SUCCESS);
 }
 void sigUsr1Handler(int signum, siginfo_t *info, void *ptr) {
@@ -155,9 +181,8 @@ void printBoardGraphicFormat(int *board) {
     }
     strcat(graphicFormat, "\n\0");
 
-    printf("%s", graphicFormat);
-//    if (write(STDOUT_FILENO, graphicFormat, strlen(graphicFormat)) < 0){
-//        write(STDERR_FILENO, WRITE_TO_STDOUT_ERROR, strlen(WRITE_TO_STDOUT_ERROR));
-//    exit(EXIT_FAILURE);
-//    }
+    if (write(STDOUT_FILENO, graphicFormat, strlen(graphicFormat)) < 0){
+        write(STDERR_FILENO, WRITE_TO_STDOUT_ERROR, strlen(WRITE_TO_STDOUT_ERROR));
+        exit(EXIT_FAILURE);
+    }
 }
