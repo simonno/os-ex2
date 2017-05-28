@@ -19,7 +19,7 @@
 #define CONNECTION_FILE "connectionFile.txt"
 #define DUP_ERROR "failed dup.\n"
 #define FORK_ERROR "failed fork.\n"
-#define OPEN_FILE_ERROR "failed to open file for read\n"
+#define OPEN_FILE_ERROR "failed to open file\n"
 
 void sigAlarmHandler(int sigNum, siginfo_t *info, void *ptr);
 
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     initializeSignalsHandler();
 
     // create a file through which information will be transferred between the children processes.
-    fdConnection = open(CONNECTION_FILE, O_CREAT | O_WRONLY | O_TRUNC, 0666);
+    fdConnection = open(CONNECTION_FILE, O_WRONLY | O_CREAT | O_EXCL, S_IRWXU | S_IXGRP);
     if (fdConnection < 0) {
         write(STDERR_FILENO, OPEN_FILE_ERROR, sizeof(OPEN_FILE_ERROR));
         exit(EXIT_FAILURE);
@@ -56,6 +56,13 @@ int main(int argc, char *argv[]) {
     //create child process for executing ex2_inp.
     firstProcessPid = fork();
     if (firstProcessPid == 0) { // first child process.
+        // open the file through which information will be transferred between the children processes.
+        fdConnection = open(CONNECTION_FILE, O_RDONLY);
+        if (fdConnection < 0) {
+            write(STDERR_FILENO, OPEN_FILE_ERROR, sizeof(OPEN_FILE_ERROR));
+            exit(EXIT_FAILURE);
+        }
+
         // set the input to be read from this file.
         if (dup2(fdConnection, STDIN_FILENO) < 0) {
             write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
@@ -71,6 +78,14 @@ int main(int argc, char *argv[]) {
         //creating another process for ex2_upd.
         secondProcessPid = fork();
         if (secondProcessPid == 0) { // second child process.
+
+            // open the file through which information will be transferred between the children processes.
+            fdConnection = open(CONNECTION_FILE, O_WRONLY);
+            if (fdConnection < 0) {
+                write(STDERR_FILENO, OPEN_FILE_ERROR, sizeof(OPEN_FILE_ERROR));
+                exit(EXIT_FAILURE);
+            }
+
             // set the output to be printed to this file.
             if (dup2(fdConnection, STDOUT_FILENO) < 0) {
                 write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
@@ -93,12 +108,12 @@ int main(int argc, char *argv[]) {
             pause();
             return 0;
         }
-        
-        // case the second fork failed. 
+
+        // case the second fork failed.
         write(STDERR_FILENO, FORK_ERROR, sizeof(FORK_ERROR));
         exit(EXIT_FAILURE);
     }
-    
+
     // case the first fork failed.
     write(STDERR_FILENO, FORK_ERROR, sizeof(FORK_ERROR));
     exit(EXIT_FAILURE);

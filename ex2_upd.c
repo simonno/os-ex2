@@ -60,6 +60,7 @@ int pidForSendingSig;
 unsigned int waitingVal;
 char moveDirection;
 int board[COLS][ROWS];
+//{0,2,4,128,4,0,0,0,4,2,2,32,16,16,0,0};
 
 /*******************************************************************************
 * function name : main                                                         *
@@ -68,6 +69,13 @@ int board[COLS][ROWS];
 * explanation :    run the game.                                               *
 *******************************************************************************/
 int main(int argc, char* argv[]) {
+//    printBoardLineFormat();
+//    //MoveRight();
+//    //MoveLeft();
+//    MoveDown();
+//    printBoardLineFormat();
+//    return 0;
+
     if (argc < 2) {
         write(STDERR_FILENO, NO_PID_ARG, sizeof(NO_PID_ARG));
         exit(EXIT_FAILURE);
@@ -113,7 +121,7 @@ void sigAlarmHandler(int sigNum, siginfo_t *info, void *ptr) {
     // send a SIGUSR1 to the specific process.
     kill(pidForSendingSig, SIGUSR1);
 
-    //check if the player win or lose the game - and print a message accordingly.     
+    //check if the player win or lose the game - and print a message accordingly.
     int checkVal = checkWinOrLose();
     if (checkVal == 1) {
         printToStdout(WIN_STRING); // print win message.
@@ -164,7 +172,7 @@ void sigUsr1Handler(int sigNum, siginfo_t *info, void *ptr) {
             break;
     }
 
-    //check if the player win or lose the game - and print a message accordingly.     
+    //check if the player win or lose the game - and print a message accordingly.
     int checkVal = checkWinOrLose();
     if (checkVal == 1) {
         printToStdout(WIN_STRING); // print win message.
@@ -183,33 +191,36 @@ void sigUsr1Handler(int sigNum, siginfo_t *info, void *ptr) {
 * output :                                                                            *
 * explanation :  move the board right.                                                *
 **************************************************************************************/
-//void MoveRight() {
-//    int i, j, rightmost0, lastMarge;
-//
-//    for (i = 0; i < ROWS; i++) {
-//        rightmost0  = COLS - 1;
-//        lastMarge = COLS - 1;
-//        int* row = board[i];
-//        for (j = COLS - 2 ; j >= 0; j--) {
-//            if (row[j] != 0 ) {
-//                if (row[j] == row[j + 1] && j < lastMarge) {
-//                    row[j + 1] *= 2;
-//                    row[j] = 0;
-//                    rightmost0 = j;
-//                    lastMarge = j;
-//                } else {
-//                    while(j < rightmost0) {
-//                        if (row[rightmost0] == 0) {
-//                            row[rightmost0] = row[j];
-//                            row[j] = 0;
-//                        }
-//                        rightmost0--;
-//                    }
-//                }
-//            }
-//        }
-//    }
-//}
+void MoveRight() {
+    int squeesedRow[COLS];
+    int i, j, t;
+
+    for (i = 0; i < ROWS; i++) {
+        t  = COLS - 1;
+        memset(squeesedRow, 0, COLS * sizeof(int));
+        for (j = COLS - 1; j >= 0; j--) { //squeese non-zero elements together to the right
+            if(board[i][j] != 0) {
+                squeesedRow[t--] = board[i][j];
+            }
+        }
+
+        t  = COLS - 1;
+        for (j = COLS - 1; j >= 0; j--) { // marge right.
+            if (squeesedRow[j] == 0) { // after the first cell which is 0 all the cells in squeesedRow will be 0;
+                break;
+            }
+            if(j > 0 && squeesedRow[j] == squeesedRow[j - 1]) { // case of marge
+                board[i][t--] = 2 * squeesedRow[j--];
+            } else {
+                board[i][t--] = squeesedRow[j];
+            }
+        }
+
+        while(t >= 0) { // set the rest cell as 0;
+            board[i][t--] = 0;
+        }
+    }
+}
 
 /**************************************************************************************
 * function name : MoveDown                                                            *
@@ -218,34 +229,32 @@ void sigUsr1Handler(int sigNum, siginfo_t *info, void *ptr) {
 * explanation :  move the board down.                                                 *
 **************************************************************************************/
 void MoveDown() {
-    int i, j, lower0, lastMarge;
+    int squeesedRow[ROWS];
+    int i, j, t;
 
-    for (j = 0; j < COLS; j++) {
-        lower0  = ROWS - 1;
-        lastMarge = ROWS - 1;
-        for (i = ROWS - 2; i >= 0; i++) {
-            if (board[i][j] == board[i - 1][j]) {
-                board[i - 1][j] *= 2;
-                board[i][j] = 0;
-                lastMarge = i;
-
-            }
-            if (board[lower0][j] != 0) {
-                lower0--; // move the lower0 to the lower place 0 found.
-                continue;
-            }
-            if (board[i][j] != 0) { // move cell right.
-                board[lower0--][j] = board[i][j];
-                board[i][j] = 0;
+    for (i = 0; i < COLS; i++) {
+        t  = ROWS - 1;
+        memset(squeesedRow, 0, ROWS * sizeof(int));
+        for (j = ROWS - 1; j >= 0; j--) { //squeese non-zero elements together upward.
+            if(board[j][i] != 0) {
+                squeesedRow[t--] = board[j][i];
             }
         }
-        // check if the is another cell to marge.
-        if (board[lastMarge - 1][j] == board[lastMarge][j]) {
-            board[lastMarge--][j] *= 2;
-            if (board[lastMarge - 1][j] != 0){
-                board[lastMarge--][j] = board[lastMarge - 1][j];
+
+        t = ROWS - 1;
+        for (j = ROWS - 1; j >= 0; j--) { // marge right.
+            if (squeesedRow[j] == 0) { // after the first cell which is 0 all the cells in squeesedRow will be 0;
+                break;
             }
-            board[lastMarge][j] = 0;
+            if(j > 0 && squeesedRow[j] == squeesedRow[j - 1]) { // case of marge
+                board[t--][i] = 2 * squeesedRow[j--];
+            } else {
+                board[t--][i] = squeesedRow[j];
+            }
+        }
+
+        while(t >= 0) { // set the rest cell as 0;
+            board[t--][i] = 0;
         }
     }
 }
@@ -257,34 +266,32 @@ void MoveDown() {
 * explanation :  move the board up.                                                   *
 **************************************************************************************/
 void MoveUp() {
-    int i, j, upper0, lastMarge;
+    int squeesedRow[ROWS];
+    int i, j, t;
 
-    for (j = 0; j < COLS; j++) {
-        upper0  = 0;
-        lastMarge = 0;
-        for (i = 1 ; i < ROWS; i++) {
-            if (board[i][j] == board[i - 1][j]) {
-                board[i - 1][j] *= 2;
-                board[i][j] = 0;
-                lastMarge = i;
-
-            }
-            if (board[upper0][j] != 0) {
-                upper0++; // move the upper0 to the upper place 0 found.
-                continue;
-            }
-            if (board[i][j] != 0) { // move cell right.
-                board[upper0++][j] = board[i][j];
-                board[i][j] = 0;
+    for (i = 0; i < COLS; i++) {
+        t  = 0;
+        memset(squeesedRow, 0, ROWS * sizeof(int));
+        for (j = 0; j < ROWS; j++) { //squeese non-zero elements together upward.
+            if(board[j][i] != 0) {
+                squeesedRow[t++] = board[j][i];
             }
         }
-        // check if the is another cell to marge.
-        if (board[lastMarge + 1][j] == board[lastMarge][j]) {
-            board[lastMarge++][j] *= 2;
-            if (board[lastMarge - 1][j] != 0){
-                board[lastMarge++][j] = board[lastMarge + 1][j];
+
+        t = 0;
+        for (j = 0; j < ROWS; j++) { // marge right.
+            if (squeesedRow[j] == 0) { // after the first cell which is 0 all the cells in squeesedRow will be 0;
+                break;
             }
-            board[lastMarge][j] = 0;
+            if(j < ROWS - 1 && squeesedRow[j] == squeesedRow[j + 1]) { // case of marge
+                board[t++][i] = 2 * squeesedRow[j++];
+            } else {
+                board[t++][i] = squeesedRow[j];
+            }
+        }
+
+        while(t < ROWS) { // set the rest cell as 0;
+            board[t++][i] = 0;
         }
     }
 }
@@ -296,34 +303,32 @@ void MoveUp() {
 * explanation :  move the board left.                                                 *
 **************************************************************************************/
 void MoveLeft() {
-    int i, j, leftmost0, lastMarge;
+    int squeesedRow[COLS];
+    int i, j, t;
 
     for (i = 0; i < ROWS; i++) {
-        leftmost0  = 0;
-        lastMarge = 0;
-        for (j = 1 ; j < COLS; j++) {
-            if (board[i][j] == board[i][j - 1]) {
-                board[i][j - 1] *= 2;
-                board[i][j] = 0;
-                lastMarge = j;
-
-            }
-            if (board[i][leftmost0] != 0) {
-                leftmost0++; // move the leftmost0  to the leftmost place 0 found.
-                continue;
-            }
-            if (board[i][j] != 0) { // move cell left.
-                board[i][leftmost0++] = board[i][j];
-                board[i][j] = 0;
+        t  = 0;
+        memset(squeesedRow, 0, COLS * sizeof(int));
+        for (j = 0; j < COLS; j++) { //squeese non-zero elements together to the left
+            if(board[i][j] != 0) {
+                squeesedRow[t++] = board[i][j];
             }
         }
-        // check if the is another cell to marge.
-        if (board[i][lastMarge + 1] == board[i][lastMarge]) {
-            board[i][lastMarge++] *= 2;
-            if (board[i][lastMarge + 1] != 0){
-                board[i][lastMarge++] = board[i][lastMarge + 1];
+
+        t = 0;
+        for (j = 0; j < COLS; j++) { // marge right.
+            if (squeesedRow[j] == 0) { // after the first cell which is 0 all the cells in squeesedRow will be 0;
+                break;
             }
-            board[i][lastMarge] = 0;
+            if(j < COLS - 1 && squeesedRow[j] == squeesedRow[j + 1]) { // case of marge
+                board[i][t++] = 2 * squeesedRow[j++];
+            } else {
+                board[i][t++] = squeesedRow[j];
+            }
+        }
+
+        while(t < COLS) { // set the rest cell as 0;
+            board[i][t++] = 0;
         }
     }
 }
@@ -375,7 +380,7 @@ int checkWinOrLose() {
     int numberOfEmptyCells = 16;
     for (i = 0; i < ROWS; i++) {
         for (j = 0; j < COLS; j++) {
-            if (board[i][j] == WIN_VAL) { 
+            if (board[i][j] == WIN_VAL) {
                 // the player win.
                 return 1;
             } else if (board[i][j] != 0) { // count the number of empty cells.
@@ -501,36 +506,105 @@ unsigned int rand_1_5() {
     return (unsigned int) (rand() % 5 + 1);
 }
 
+//for (j = COLS - 2; j < 0; j--) { //squeese non-zero elements together
+//if(row[j] != 0) {
+//if (row[j] == row[j + 1]) {
+//row[j + 1] *= 2;
+//row[j] = 0;
+//} else if(row[j - 1] == row[j]){
+//row[j] *= 2;
+//row[j - 1] = 0;
+//break;
+//}
+//}
+//}
+//
+//for (j = COLS - 2; j <= 0; j--) { // moving right.
+//if(row[j] != 0 && row[j + 1] == 0) {
+//row[j + 1] = row[j];
+//row[j] = 0;
+//}
+//}
 
-void MoveRight() {
-    int i, j, rightmost0, lastMarge;
+//if(row[0] == row[1] && row[2] == row[3] && row[1] != 0 && row[3]  ) { // case [x,x,y,y] -> [0,0,2x,2y]
+//row[3] *=2;
+//row[2] = 2 * row[1];
+//row[0] = row[1] = 0;
+//} else if (row[2] == row[3]) { // case [x,y,z,z] -> [0,x,y,2z]
+//row[3] *=2;
+//row[2] = row[1];
+//row[1] = row[0];
+//row[0] = 0;
+//} else if (row[2] == row[3]) { // case [x,x,y,z] -> [0,2x,y,z]
+//row[3] *=2;
+//row[2] = row[1];
+//row[1] = row[0];
+//row[0] = 0;
+//}
 
-    for (i = 0; i < ROWS; i++) {
-        rightmost0  = COLS - 1;
-        lastMarge = COLS - 1;
-        for (j = COLS - 2 ; j >= 0; j--) {
-            if (board[i][j] == board[i][j + 1]) {
-                board[i][j + 1] *= 2;
-                board[i][j] = 0;
-                lastMarge = j;
+//
+//void MoveRight() {
+//    int i, j, rightmost0, lastMarge;
+//
+//    for (i = 0; i < ROWS; i++) {
+//        rightmost0  = COLS - 1;
+//        lastMarge = COLS - 1;
+//        for (j = COLS - 2 ; j >= 0; j--) {
+//            if (board[i][j] == board[i][j + 1]) {
+//                board[i][j + 1] *= 2;
+//                board[i][j] = 0;
+//                lastMarge = j;
+//
+//            }
+//            if (board[i][rightmost0] != 0) {
+//                rightmost0--; // move the rightmost0  to the rightmost place 0 found.
+//                continue;
+//            }
+//            if (board[i][j] != 0) { // move cell right.
+//                board[i][rightmost0--] = board[i][j];
+//                board[i][j] = 0;
+//            }
+//        }
+//        // check if the is another cell to marge.
+//        if (board[i][lastMarge - 1] == board[i][lastMarge]) {
+//            board[i][lastMarge--] *= 2;
+//            if (board[i][lastMarge - 1] != 0){
+//                board[i][lastMarge--] = board[i][lastMarge - 1];
+//            }
+//            board[i][lastMarge] = 0;
+//        }
+//    }
+//}
 
-            }
-            if (board[i][rightmost0] != 0) {
-                rightmost0--; // move the rightmost0  to the rightmost place 0 found.
-                continue;
-            }
-            if (board[i][j] != 0) { // move cell right.
-                board[i][rightmost0--] = board[i][j];
-                board[i][j] = 0;
-            }
-        }
-        // check if the is another cell to marge.
-        if (board[i][lastMarge - 1] == board[i][lastMarge]) {
-            board[i][lastMarge--] *= 2;
-            if (board[i][lastMarge - 1] != 0){
-                board[i][lastMarge--] = board[i][lastMarge - 1];
-            }
-            board[i][lastMarge] = 0;
-        }
-    }
-}
+
+/// left
+//int i, j, leftmost0, lastMarge;
+//
+//    for (i = 0; i < ROWS; i++) {
+//        leftmost0  = 0;
+//        lastMarge = 0;
+//        for (j = 1 ; j < COLS; j++) {
+//            if (board[i][j] == board[i][j - 1]) {
+//                board[i][j - 1] *= 2;
+//                board[i][j] = 0;
+//                lastMarge = j;
+//
+//            }
+//            if (board[i][leftmost0] != 0) {
+//                leftmost0++; // move the leftmost0  to the leftmost place 0 found.
+//                continue;
+//            }
+//            if (board[i][j] != 0) { // move cell left.
+//                board[i][leftmost0++] = board[i][j];
+//                board[i][j] = 0;
+//            }
+//        }
+//        // check if the is another cell to marge.
+//        if (board[i][lastMarge + 1] == board[i][lastMarge]) {
+//            board[i][lastMarge++] *= 2;
+//            if (board[i][lastMarge + 1] != 0){
+//                board[i][lastMarge++] = board[i][lastMarge + 1];
+//            }
+//            board[i][lastMarge] = 0;
+//        }
+//    }

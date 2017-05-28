@@ -34,14 +34,6 @@ void sigIntHandler(int signum, siginfo_t *info, void *ptr);
 
 void fromStringToMatrix(char* stringBroad, int board[CELLS_NUM]);
 
-void printWinMessage();
-
-/***************************************************************************
-* function name : printToStdout                                            *
-* input : string and a length of the string                                *
-* output : void.                                                           *
-* explanation : print the string ti stdout, and check for errors.          *
-***************************************************************************/
 void printToStdout(char *string) ;
 
 /*******************************************************************************
