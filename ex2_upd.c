@@ -10,7 +10,6 @@
 #include <signal.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 #define WIN_VAL 2024
 #define ROWS 4
@@ -20,6 +19,7 @@
 #define BOARD_LENGTH 116
 #define WIN_STRING "Congratulations!\n"
 #define LOSE_STRING "Game Over!\n"
+#define SIGACTION_ERROR "sigaction error.\n"
 #define WRITE_TO_STDOUT_ERROR "failed writing to stdout.\n"
 #define NO_PID_ARG "pid process is missing."
 
@@ -34,9 +34,9 @@ void run();
 
 void addCellOf2();
 
-void checkWinOrLose();
+int checkWinOrLose();
 
-void printToStdout(char *string, size_t stringSize);
+void printToStdout(char *string);
 
 void initializeSignalsHandler();
 
@@ -112,7 +112,18 @@ void sigAlarmHandler(int sigNum, siginfo_t *info, void *ptr) {
     printBoardLineFormat();
     // send a SIGUSR1 to the specific process.
     kill(pidForSendingSig, SIGUSR1);
-    checkWinOrLose();
+
+    //check if the player win or lose the game - and print a message accordingly.     
+    int checkVal = checkWinOrLose();
+    if (checkVal == 1) {
+        printToStdout(WIN_STRING); // print win message.
+        kill(pidForSendingSig, SIGUSR1);
+        exit(EXIT_SUCCESS);
+    } else if (checkVal == -1) {
+        printToStdout(LOSE_STRING); // print lose message.
+        kill(pidForSendingSig, SIGUSR1);
+        exit(EXIT_SUCCESS);
+    }
 }
 
 /**************************************************************************************
@@ -152,6 +163,18 @@ void sigUsr1Handler(int sigNum, siginfo_t *info, void *ptr) {
         default:
             break;
     }
+
+    //check if the player win or lose the game - and print a message accordingly.     
+    int checkVal = checkWinOrLose();
+    if (checkVal == 1) {
+        printToStdout(WIN_STRING); // print win message.
+        kill(pidForSendingSig, SIGUSR1);
+        exit(EXIT_SUCCESS);
+    } else if (checkVal == -1) {
+        printToStdout(LOSE_STRING); // print lose message.
+        kill(pidForSendingSig, SIGUSR1);
+        exit(EXIT_SUCCESS);
+    }
 }
 
 /**************************************************************************************
@@ -160,33 +183,33 @@ void sigUsr1Handler(int sigNum, siginfo_t *info, void *ptr) {
 * output :                                                                            *
 * explanation :  move the board right.                                                *
 **************************************************************************************/
-void MoveRight() {
-    int i, j, rightmost0, lastMarge;
-    
-    for (i = 0; i < ROWS; i++) {
-        rightmost0  = COLS - 1;
-        lastMarge = COLS - 1;
-        int* row = board[i];
-        for (j = COLS - 2 ; j >= 0; j--) {
-            if (row[j] != 0 ) {
-                if (row[j] == row[j + 1] && j < lastMarge) {
-                    row[j + 1] *= 2;
-                    row[j] = 0;
-                    rightmost0 = j;
-                    lastMarge = j;
-                } else {
-                    while(j < rightmost0) {
-                        if (row[rightmost0] == 0) {
-                            row[rightmost0] = row[j];
-                            row[j] = 0;
-                        }
-                        rightmost0--;
-                    }
-                }
-            }
-        }
-    }
-}
+//void MoveRight() {
+//    int i, j, rightmost0, lastMarge;
+//
+//    for (i = 0; i < ROWS; i++) {
+//        rightmost0  = COLS - 1;
+//        lastMarge = COLS - 1;
+//        int* row = board[i];
+//        for (j = COLS - 2 ; j >= 0; j--) {
+//            if (row[j] != 0 ) {
+//                if (row[j] == row[j + 1] && j < lastMarge) {
+//                    row[j + 1] *= 2;
+//                    row[j] = 0;
+//                    rightmost0 = j;
+//                    lastMarge = j;
+//                } else {
+//                    while(j < rightmost0) {
+//                        if (row[rightmost0] == 0) {
+//                            row[rightmost0] = row[j];
+//                            row[j] = 0;
+//                        }
+//                        rightmost0--;
+//                    }
+//                }
+//            }
+//        }
+//    }
+//}
 
 /**************************************************************************************
 * function name : MoveDown                                                            *
@@ -344,18 +367,17 @@ void addCellOf2() {
 /***************************************************************************
 * function name : checkWinOrLose                                           *
 * input :                                                                  *
-* output : void.                                                           *
-* explanation : check if the player win or lose the game -                 *
-*               and print a message accordingly.                           *
+* output :  1 - for winning, -1 - for losing, 0 else.                      *
+* explanation : check if the player win or lose the game.                  *
 ***************************************************************************/
-void checkWinOrLose() {
+int checkWinOrLose() {
     int i, j;
     int numberOfEmptyCells = 16;
     for (i = 0; i < ROWS; i++) {
         for (j = 0; j < COLS; j++) {
-            if (board[i][j] == WIN_VAL) { // check if the player win.
-                printToStdout(WIN_STRING, strlen(WIN_STRING)); // print win message.
-                exit(EXIT_SUCCESS);
+            if (board[i][j] == WIN_VAL) { 
+                // the player win.
+                return 1;
             } else if (board[i][j] != 0) { // count the number of empty cells.
                 numberOfEmptyCells--;
             }
@@ -364,23 +386,24 @@ void checkWinOrLose() {
     // check if the board is full.
     if (numberOfEmptyCells == 0) {
         // the player lost.
-        printToStdout(LOSE_STRING, strlen(LOSE_STRING)); // print win message.
-        exit(EXIT_SUCCESS);
+        return -1;
     }
+    return 0;
 }
 
 /***************************************************************************
 * function name : printToStdout                                            *
-* input : string and a length of the string                                *
+* input : string to print                                                  *
 * output : void.                                                           *
 * explanation : print the string ti stdout, and check for errors.          *
 ***************************************************************************/
-void printToStdout(char *string, size_t stringSize) {
-    if (write(STDOUT_FILENO, string, stringSize) < 0){ 
+void printToStdout(char *string) {
+    if (write(STDOUT_FILENO, string, strlen(string)) < 0){
         write(STDERR_FILENO, WRITE_TO_STDOUT_ERROR, strlen(WRITE_TO_STDOUT_ERROR));
         exit(EXIT_FAILURE);
     }
 }
+
 
 /****************************************************************************
 * function name : printBoardLineFormat                                      *
@@ -410,7 +433,7 @@ void printBoardLineFormat() {
         }
     }
     strcat(lineFormat, "\n");
-    printToStdout(lineFormat, strlen(lineFormat));
+    printToStdout(lineFormat);
 }
 
 /************************************************************************************
@@ -479,35 +502,35 @@ unsigned int rand_1_5() {
 }
 
 
-//void MoveRight() {
-//    int i, j, rightmost0, lastMarge;
-//
-//    for (i = 0; i < ROWS; i++) {
-//        rightmost0  = COLS - 1;
-//        lastMarge = COLS - 1;
-//        for (j = COLS - 2 ; j >= 0; j--) {
-//            if (board[i][j] == board[i][j + 1]) {
-//                board[i][j + 1] *= 2;
-//                board[i][j] = 0;
-//                lastMarge = j;
-//
-//            }
-//            if (board[i][rightmost0] != 0) {
-//                rightmost0--; // move the rightmost0  to the rightmost place 0 found.
-//                continue;
-//            }
-//            if (board[i][j] != 0) { // move cell right.
-//                board[i][rightmost0--] = board[i][j];
-//                board[i][j] = 0;
-//            }
-//        }
-//        // check if the is another cell to marge.
-//        if (board[i][lastMarge - 1] == board[i][lastMarge]) {
-//            board[i][lastMarge--] *= 2;
-//            if (board[i][lastMarge - 1] != 0){
-//                board[i][lastMarge--] = board[i][lastMarge - 1];
-//            }
-//            board[i][lastMarge] = 0;
-//        }
-//    }
-//}
+void MoveRight() {
+    int i, j, rightmost0, lastMarge;
+
+    for (i = 0; i < ROWS; i++) {
+        rightmost0  = COLS - 1;
+        lastMarge = COLS - 1;
+        for (j = COLS - 2 ; j >= 0; j--) {
+            if (board[i][j] == board[i][j + 1]) {
+                board[i][j + 1] *= 2;
+                board[i][j] = 0;
+                lastMarge = j;
+
+            }
+            if (board[i][rightmost0] != 0) {
+                rightmost0--; // move the rightmost0  to the rightmost place 0 found.
+                continue;
+            }
+            if (board[i][j] != 0) { // move cell right.
+                board[i][rightmost0--] = board[i][j];
+                board[i][j] = 0;
+            }
+        }
+        // check if the is another cell to marge.
+        if (board[i][lastMarge - 1] == board[i][lastMarge]) {
+            board[i][lastMarge--] *= 2;
+            if (board[i][lastMarge - 1] != 0){
+                board[i][lastMarge--] = board[i][lastMarge - 1];
+            }
+            board[i][lastMarge] = 0;
+        }
+    }
+}

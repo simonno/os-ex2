@@ -18,6 +18,7 @@
 #define SIGACTION_ERROR "sigaction error.\n"
 #define CONNECTION_FILE "connectionFile.txt"
 #define DUP_ERROR "failed dup.\n"
+#define FORK_ERROR "failed fork.\n"
 #define OPEN_FILE_ERROR "failed to open file for read\n"
 
 void sigAlarmHandler(int sigNum, siginfo_t *info, void *ptr);
@@ -52,8 +53,9 @@ int main(int argc, char *argv[]) {
     }
 
 
-    //create child process for executing ex2inp.
-    if ((firstProcessPid = fork()) == 0) {
+    //create child process for executing ex2_inp.
+    firstProcessPid = fork();
+    if (firstProcessPid == 0) { // first child process.
         // set the input to be read from this file.
         if (dup2(fdConnection, STDIN_FILENO) < 0) {
             write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
@@ -65,9 +67,10 @@ int main(int argc, char *argv[]) {
         write(STDERR_FILENO, EXEC_ERROR, strlen(EXEC_ERROR));
         exit(EXIT_FAILURE);
 
-    } else if (firstProcessPid > 0) {
-        //creating another process for ex2upd.
-        if ((secondProcessPid = fork()) == 0) {
+    } else if (firstProcessPid > 0) { // the father process.
+        //creating another process for ex2_upd.
+        secondProcessPid = fork();
+        if (secondProcessPid == 0) { // second child process.
             // set the output to be printed to this file.
             if (dup2(fdConnection, STDOUT_FILENO) < 0) {
                 write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
@@ -82,15 +85,23 @@ int main(int argc, char *argv[]) {
             write(STDERR_FILENO, EXEC_ERROR, strlen(EXEC_ERROR));
             exit(EXIT_FAILURE);
 
-        } else if (secondProcessPid > 0) {
+        } else if (secondProcessPid > 0) { // the father process.
             sleep(1);
             alarm(terminationTime);
 
             //the father process wait for the processes to finish and exit.
             pause();
+            return 0;
         }
+        
+        // case the second fork failed. 
+        write(STDERR_FILENO, FORK_ERROR, sizeof(FORK_ERROR));
+        exit(EXIT_FAILURE);
     }
-    return 0;
+    
+    // case the first fork failed.
+    write(STDERR_FILENO, FORK_ERROR, sizeof(FORK_ERROR));
+    exit(EXIT_FAILURE);
 }
 
 /**************************************************************************************
