@@ -99,10 +99,12 @@ void sigUsr1Handler(int signum, siginfo_t *info, void *ptr) {
         exit(EXIT_FAILURE);
     }
 
-    if (strcmp(lineFormat, WIN_STRING) == 0){
+    if (strncmp(lineFormat, WIN_STRING, strlen(WIN_STRING)) == 0){
         printToStdout(WIN_STRING);
-    } else if (strcmp(lineFormat, LOSE_STRING) == 0){
+        exit(EXIT_SUCCESS);
+    } else if (strncmp(lineFormat, LOSE_STRING, strlen(LOSE_STRING)) == 0){
         printToStdout(LOSE_STRING);
+        exit(EXIT_SUCCESS);
     }
     //print the board in graphic format.
     int board[CELLS_NUM];
@@ -122,7 +124,6 @@ void printToStdout(char *string) {
         exit(EXIT_FAILURE);
     }
 }
-
 
 /****************************************************************************
 * function name : initializeSignalsHandler                                  *
@@ -189,8 +190,3 @@ void printBoardGraphicFormat(int *board) {
     // print the board in the graphic format to STDOUT.
     printToStdout(graphicFormat);
 }
-
-
-//int board[16] = {0,2,4,128,4,0,12,0,4,2,2024,32,16,128,2,0};
-//    printBoardGraphicFormat(board);
-//    return 0;

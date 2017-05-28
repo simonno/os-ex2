@@ -46,11 +46,12 @@ int main(int argc, char *argv[]) {
     initializeSignalsHandler();
 
     // create a file through which information will be transferred between the children processes.
-    fdConnection = open(CONNECTION_FILE, O_WRONLY | O_CREAT | O_EXCL, S_IRWXU | S_IXGRP);
+    fdConnection = open(CONNECTION_FILE, O_WRONLY | O_CREAT | O_TRUNC | S_IRWXU | S_IXGRP);
     if (fdConnection < 0) {
         write(STDERR_FILENO, OPEN_FILE_ERROR, sizeof(OPEN_FILE_ERROR));
         exit(EXIT_FAILURE);
     }
+    close(fdConnection);
 
 
     //create child process for executing ex2_inp.
@@ -126,12 +127,13 @@ int main(int argc, char *argv[]) {
 * explanation :  handler the alarm signal.                                            *
 **************************************************************************************/
 void sigAlarmHandler(int sigNum, siginfo_t *info, void *ptr) {
-    close(fdConnection);
-    unlink(CONNECTION_FILE);
 
     //send to SIGINT to the processes to cause them finish the program.
     kill(firstProcessPid, SIGINT);
     kill(secondProcessPid, SIGINT);
+
+    // delete the connection file.
+    unlink(CONNECTION_FILE);
 }
 
 /****************************************************************************
