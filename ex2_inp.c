@@ -26,6 +26,7 @@
 #define OPEN_FILE_ERROR "failed to open file for read.\n"
 
 int oldSTDIN;
+int fdInput;
 
 void printBoardGraphicFormat(int *pInt);
 
@@ -45,24 +46,23 @@ void fromStringToMatrix(char* stringBroad, int board[CELLS_NUM]);
 *******************************************************************************/
 int main(int argc, char* argv[]) {
     // open the input file.
-    int fd = open(INTPUT_FILE, O_CREAT | O_RDONLY, 0666);
-    if (fd < 0) {
+    fdInput = open(INTPUT_FILE, O_CREAT | O_RDONLY, 0666);
+    if (fdInput < 0) {
         write(STDERR_FILENO, OPEN_FILE_ERROR, sizeof(OPEN_FILE_ERROR));
         exit(EXIT_FAILURE);
     }
 
-    //
-    if (dup2(fd, 0) < 0) {
+    if (dup2(fdInput, STDIN_FILENO) < 0) {
         write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
         exit(EXIT_FAILURE);
     }
 
-    //save the old stdin.
-    oldSTDIN = dup(STDIN_FILENO);
-    if (oldSTDIN < 0) {
-        write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
-        exit(EXIT_FAILURE);
-    }
+//    //save the old stdin.
+//    oldSTDIN = dup(STDIN_FILENO);
+//    if (oldSTDIN < 0) {
+//        write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
+//        exit(EXIT_FAILURE);
+//    }
 
     // initail the signal handlers.
     initializeSignalsHandler();
@@ -107,11 +107,11 @@ void sigIntHandler(int signum, siginfo_t *info, void *ptr) {
         exit(EXIT_FAILURE);
     }
 
-    if (dup2(oldSTDIN, STDIN_FILENO) < 0) {
+    if (dup2(STDIN_FILENO, fdInput) < 0) {
         write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
         exit(EXIT_FAILURE);
     }
-    close(oldSTDIN);
+    close(fdInput);
     exit(EXIT_SUCCESS);
 }
 

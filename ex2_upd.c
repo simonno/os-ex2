@@ -25,6 +25,7 @@
 #define OUTPUT_FILE "output.txt"
 #define DUP_ERROR "failed dup.\n"
 #define OPEN_FILE_ERROR "failed to open file for read\n"
+#define NO_PID_ARG "pid process is missing."
 
 
 unsigned int rand_1_5();
@@ -63,7 +64,8 @@ int pidForSendingSig;
 unsigned int waitingVal;
 char moveDirection;
 int oldSTDOUT;
-int board[COLS][ROWS] = {0};
+int fdOutPut;
+int board[COLS][ROWS];
 
 /*******************************************************************************
 * function name : main                                                         *
@@ -72,25 +74,27 @@ int board[COLS][ROWS] = {0};
 * explanation :    run the game.                                               *
 *******************************************************************************/
 int main(int argc, char* argv[]) {
-    if (argc < 2){
+    if (argc < 2) {
+        write(STDERR_FILENO, NO_PID_ARG, sizeof(NO_PID_ARG));
         exit(EXIT_FAILURE);
     }
 
-    int fd = open(OUTPUT_FILE, O_CREAT | O_WRONLY | O_TRUNC, 0666);
-    if (fd < 0) {
+    fdOutPut = open(OUTPUT_FILE, O_CREAT | O_WRONLY | O_TRUNC, 0666);
+    if (fdOutPut < 0) {
         write(STDERR_FILENO, OPEN_FILE_ERROR, sizeof(OPEN_FILE_ERROR));
         exit(EXIT_FAILURE);
     }
-    if (dup2(fd, STDOUT_FILENO) < 0) {
+
+    if (dup2(fdOutPut, STDOUT_FILENO) < 0) {
         write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
         exit(EXIT_FAILURE);
     }
 
-    //save the old stdout.
-    if ((oldSTDOUT = dup(STDOUT_FILENO)) < 0) {
-        write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
-        exit(EXIT_FAILURE);
-    }
+//    //save the old stdout.
+//    if ((oldSTDOUT = dup(STDOUT_FILENO)) < 0) {
+//        write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
+//        exit(EXIT_FAILURE);
+//    }
     pidForSendingSig = atoi(argv[1]);
     initializeSignalsHandler();
 
@@ -130,6 +134,7 @@ void sigAlarmHandler(int sigNum, siginfo_t *info, void *ptr) {
     printBoardLineFormat();
     // send a SIGUSR1 to the specific process.
     kill(pidForSendingSig, SIGUSR1);
+    checkWinOrLose();
 }
 
 /**************************************************************************************
@@ -139,11 +144,11 @@ void sigAlarmHandler(int sigNum, siginfo_t *info, void *ptr) {
 * explanation :  handler the int signal.                                              *
 **************************************************************************************/
 void sigIntHandler(int sigNum, siginfo_t *info, void *ptr) {
-    if (dup2(oldSTDOUT, STDOUT_FILENO) < 0) {
+    if (dup2(STDOUT_FILENO, fdOutPut) < 0) {
         write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
         exit(EXIT_FAILURE);
     }
-    close(oldSTDOUT);
+    close(fdOutPut);
     kill(pidForSendingSig, SIGINT);
     unlink(OUTPUT_FILE);
     exit(EXIT_SUCCESS);
@@ -227,29 +232,29 @@ void MoveDown() {
     int i, j, lower0, lastMarge;
 
     for (j = 0; j < COLS; j++) {
-        lower0  = 0;
-        lastMarge = 0;
-        for (i = 1 ; i < ROWS; i--) {
+        lower0  = ROWS - 1;
+        lastMarge = ROWS - 1;
+        for (i = ROWS - 2; i >= 0; i++) {
             if (board[i][j] == board[i - 1][j]) {
                 board[i - 1][j] *= 2;
                 board[i][j] = 0;
-                lastMarge = j;
+                lastMarge = i;
 
             }
             if (board[lower0][j] != 0) {
-                lower0++; // move the lower0 to the lower place 0 found.
+                lower0--; // move the lower0 to the lower place 0 found.
                 continue;
             }
             if (board[i][j] != 0) { // move cell right.
-                board[lower0++][j] = board[i][j];
+                board[lower0--][j] = board[i][j];
                 board[i][j] = 0;
             }
         }
         // check if the is another cell to marge.
-        if (board[lastMarge + 1][j] == board[lastMarge][j]) {
-            board[lastMarge++][j] *= 2;
+        if (board[lastMarge - 1][j] == board[lastMarge][j]) {
+            board[lastMarge--][j] *= 2;
             if (board[lastMarge - 1][j] != 0){
-                board[lastMarge++][j] = board[lastMarge + 1][j];
+                board[lastMarge--][j] = board[lastMarge - 1][j];
             }
             board[lastMarge][j] = 0;
         }
@@ -266,29 +271,29 @@ void MoveUp() {
     int i, j, upper0, lastMarge;
 
     for (j = 0; j < COLS; j++) {
-        upper0  = ROWS - 1;
-        lastMarge = ROWS - 1;
-        for (i = ROWS - 2 ; i >= 0; i--) {
-            if (board[i][j] == board[i + 1][j]) {
-                board[i + 1][j] *= 2;
+        upper0  = 0;
+        lastMarge = 0;
+        for (i = 1 ; i < ROWS; i++) {
+            if (board[i][j] == board[i - 1][j]) {
+                board[i - 1][j] *= 2;
                 board[i][j] = 0;
-                lastMarge = j;
+                lastMarge = i;
 
             }
             if (board[upper0][j] != 0) {
-                upper0--; // move the upper0 to the upper place 0 found.
+                upper0++; // move the upper0 to the upper place 0 found.
                 continue;
             }
             if (board[i][j] != 0) { // move cell right.
-                board[upper0--][j] = board[i][j];
+                board[upper0++][j] = board[i][j];
                 board[i][j] = 0;
             }
         }
         // check if the is another cell to marge.
-        if (board[lastMarge - 1][j] == board[lastMarge][j]) {
-            board[lastMarge--][j] *= 2;
+        if (board[lastMarge + 1][j] == board[lastMarge][j]) {
+            board[lastMarge++][j] *= 2;
             if (board[lastMarge - 1][j] != 0){
-                board[lastMarge--][j] = board[lastMarge - 1][j];
+                board[lastMarge++][j] = board[lastMarge + 1][j];
             }
             board[lastMarge][j] = 0;
         }
@@ -368,8 +373,6 @@ void addCellOf2() {
         j = rand() % 5;
     }
     board[i][j] = 2;
-    
-    checkWinOrLose();
 }
 
 /***************************************************************************
@@ -451,6 +454,7 @@ void printBoardLineFormat() {
 * explanation : initialize the board to be 0 in each cell except two random cells.  *
 ************************************************************************************/
 void initializeBoard() {
+    memset(board, 0, ROWS * COLS * sizeof(int));
     // set a random cell to be 2
     int i = rand() % 5;
     int j = rand() % 5;
