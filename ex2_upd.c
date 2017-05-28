@@ -21,10 +21,6 @@
 #define WIN_STRING "Congratulations!\n"
 #define LOSE_STRING "Game Over!\n"
 #define WRITE_TO_STDOUT_ERROR "failed writing to stdout.\n"
-#define SIGACTION_ERROR "sigaction error.\n"
-#define OUTPUT_FILE "output.txt"
-#define DUP_ERROR "failed dup.\n"
-#define OPEN_FILE_ERROR "failed to open file for read\n"
 #define NO_PID_ARG "pid process is missing."
 
 
@@ -63,8 +59,6 @@ void MoveLeft() ;
 int pidForSendingSig;
 unsigned int waitingVal;
 char moveDirection;
-int oldSTDOUT;
-int fdOutPut;
 int board[COLS][ROWS];
 
 /*******************************************************************************
@@ -79,22 +73,6 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    fdOutPut = open(OUTPUT_FILE, O_CREAT | O_WRONLY | O_TRUNC, 0666);
-    if (fdOutPut < 0) {
-        write(STDERR_FILENO, OPEN_FILE_ERROR, sizeof(OPEN_FILE_ERROR));
-        exit(EXIT_FAILURE);
-    }
-
-    if (dup2(fdOutPut, STDOUT_FILENO) < 0) {
-        write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
-        exit(EXIT_FAILURE);
-    }
-
-//    //save the old stdout.
-//    if ((oldSTDOUT = dup(STDOUT_FILENO)) < 0) {
-//        write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
-//        exit(EXIT_FAILURE);
-//    }
     pidForSendingSig = atoi(argv[1]);
     initializeSignalsHandler();
 
@@ -144,13 +122,6 @@ void sigAlarmHandler(int sigNum, siginfo_t *info, void *ptr) {
 * explanation :  handler the int signal.                                              *
 **************************************************************************************/
 void sigIntHandler(int sigNum, siginfo_t *info, void *ptr) {
-    if (dup2(STDOUT_FILENO, fdOutPut) < 0) {
-        write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
-        exit(EXIT_FAILURE);
-    }
-    close(fdOutPut);
-    kill(pidForSendingSig, SIGINT);
-    unlink(OUTPUT_FILE);
     exit(EXIT_SUCCESS);
 }
 
@@ -195,29 +166,24 @@ void MoveRight() {
     for (i = 0; i < ROWS; i++) {
         rightmost0  = COLS - 1;
         lastMarge = COLS - 1;
+        int* row = board[i];
         for (j = COLS - 2 ; j >= 0; j--) {
-            if (board[i][j] == board[i][j + 1]) {
-                board[i][j + 1] *= 2;
-                board[i][j] = 0;
-                lastMarge = j;
-
+            if (row[j] != 0 ) {
+                if (row[j] == row[j + 1] && j < lastMarge) {
+                    row[j + 1] *= 2;
+                    row[j] = 0;
+                    rightmost0 = j;
+                    lastMarge = j;
+                } else {
+                    while(j < rightmost0) {
+                        if (row[rightmost0] == 0) {
+                            row[rightmost0] = row[j];
+                            row[j] = 0;
+                        }
+                        rightmost0--;
+                    }
+                }
             }
-            if (board[i][rightmost0] != 0) {
-                rightmost0--; // move the rightmost0  to the rightmost place 0 found.
-                continue;
-            }
-            if (board[i][j] != 0) { // move cell right.
-                board[i][rightmost0--] = board[i][j];
-                board[i][j] = 0;
-            }
-        }
-        // check if the is another cell to marge.
-        if (board[i][lastMarge - 1] == board[i][lastMarge]) {
-            board[i][lastMarge--] *= 2;
-            if (board[i][lastMarge - 1] != 0){
-                board[i][lastMarge--] = board[i][lastMarge - 1];
-            }
-            board[i][lastMarge] = 0;
         }
     }
 }
@@ -511,3 +477,37 @@ void initializeSignalsHandler() {
 unsigned int rand_1_5() {
     return (unsigned int) (rand() % 5 + 1);
 }
+
+
+//void MoveRight() {
+//    int i, j, rightmost0, lastMarge;
+//
+//    for (i = 0; i < ROWS; i++) {
+//        rightmost0  = COLS - 1;
+//        lastMarge = COLS - 1;
+//        for (j = COLS - 2 ; j >= 0; j--) {
+//            if (board[i][j] == board[i][j + 1]) {
+//                board[i][j + 1] *= 2;
+//                board[i][j] = 0;
+//                lastMarge = j;
+//
+//            }
+//            if (board[i][rightmost0] != 0) {
+//                rightmost0--; // move the rightmost0  to the rightmost place 0 found.
+//                continue;
+//            }
+//            if (board[i][j] != 0) { // move cell right.
+//                board[i][rightmost0--] = board[i][j];
+//                board[i][j] = 0;
+//            }
+//        }
+//        // check if the is another cell to marge.
+//        if (board[i][lastMarge - 1] == board[i][lastMarge]) {
+//            board[i][lastMarge--] *= 2;
+//            if (board[i][lastMarge - 1] != 0){
+//                board[i][lastMarge--] = board[i][lastMarge - 1];
+//            }
+//            board[i][lastMarge] = 0;
+//        }
+//    }
+//}

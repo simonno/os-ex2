@@ -14,14 +14,19 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#define EXEC_ERROR "failed to exec"
-#define SIGACTION_ERROR "ERROR: sigaction"
+#define EXEC_ERROR "failed to exec. \n"
+#define SIGACTION_ERROR "sigaction error.\n"
+#define CONNECTION_FILE "connectionFile.txt"
+#define DUP_ERROR "failed dup.\n"
+#define OPEN_FILE_ERROR "failed to open file for read\n"
 
 void sigAlarmHandler(int sigNum, siginfo_t *info, void *ptr);
 
 void initializeSignalsHandler();
 
 int terminationTime;
+
+int fdConnection;
 
 //the two child processes
 pid_t firstProcessPid, secondProcessPid;
@@ -39,8 +44,21 @@ int main(int argc, char *argv[]) {
     //initial the signals handlers.
     initializeSignalsHandler();
 
+    // create a file through which information will be transferred between the children processes.
+    fdConnection = open(CONNECTION_FILE, O_CREAT | O_WRONLY | O_TRUNC, 0666);
+    if (fdConnection < 0) {
+        write(STDERR_FILENO, OPEN_FILE_ERROR, sizeof(OPEN_FILE_ERROR));
+        exit(EXIT_FAILURE);
+    }
+
+
     //create child process for executing ex2inp.
     if ((firstProcessPid = fork()) == 0) {
+        // set the input to be read from this file.
+        if (dup2(fdConnection, STDIN_FILENO) < 0) {
+            write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
+            exit(EXIT_FAILURE);
+        }
 
         //executing ex2inp process.
         execlp("./ex2_inp.out", "./ex2_inp.out", NULL);
@@ -50,11 +68,16 @@ int main(int argc, char *argv[]) {
     } else if (firstProcessPid > 0) {
         //creating another process for ex2upd.
         if ((secondProcessPid = fork()) == 0) {
+            // set the output to be printed to this file.
+            if (dup2(fdConnection, STDOUT_FILENO) < 0) {
+                write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
+                exit(EXIT_FAILURE);
+            }
+
             //convert the ex2inp pid to string.
             char arg[16];
             sprintf(arg, "%d", firstProcessPid);
-            //executing ex2upd.
-
+            //executing ex2_upd.
             execlp("./ex2_upd.out", "./ex2_upd.out", arg, NULL);
             write(STDERR_FILENO, EXEC_ERROR, strlen(EXEC_ERROR));
             exit(EXIT_FAILURE);
@@ -77,7 +100,11 @@ int main(int argc, char *argv[]) {
 * explanation :  handler the alarm signal.                                            *
 **************************************************************************************/
 void sigAlarmHandler(int sigNum, siginfo_t *info, void *ptr) {
-    //send to ex2upd SIGINT and ex2upd will send to ex2inp SIGINT.
+    close(fdConnection);
+    unlink(CONNECTION_FILE);
+
+    //send to SIGINT to the processes to cause them finish the program.
+    kill(firstProcessPid, SIGINT);
     kill(secondProcessPid, SIGINT);
 }
 

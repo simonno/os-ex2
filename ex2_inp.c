@@ -10,7 +10,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 #define ROWS 4
 #define COLS 4
@@ -21,12 +20,7 @@
 #define READ_FROM_STDIN_ERROR "failed reading from stdin.\n"
 #define WRITE_TO_STDOUT_ERROR "failed writing to stdout.\n"
 #define SIGACTION_ERROR "sigaction error.\n"
-#define INTPUT_FILE "output.txt"
-#define DUP_ERROR "failed dup.\n"
 #define OPEN_FILE_ERROR "failed to open file for read.\n"
-
-int oldSTDIN;
-int fdInput;
 
 void printBoardGraphicFormat(int *pInt);
 
@@ -45,26 +39,7 @@ void fromStringToMatrix(char* stringBroad, int board[CELLS_NUM]);
 * explanation : print the board in graphic format when sigUser1 is sent.       *
 *******************************************************************************/
 int main(int argc, char* argv[]) {
-    // open the input file.
-    fdInput = open(INTPUT_FILE, O_CREAT | O_RDONLY, 0666);
-    if (fdInput < 0) {
-        write(STDERR_FILENO, OPEN_FILE_ERROR, sizeof(OPEN_FILE_ERROR));
-        exit(EXIT_FAILURE);
-    }
-
-    if (dup2(fdInput, STDIN_FILENO) < 0) {
-        write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
-        exit(EXIT_FAILURE);
-    }
-
-//    //save the old stdin.
-//    oldSTDIN = dup(STDIN_FILENO);
-//    if (oldSTDIN < 0) {
-//        write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
-//        exit(EXIT_FAILURE);
-//    }
-
-    // initail the signal handlers.
+    // initial the signal handlers.
     initializeSignalsHandler();
 
     //waiting for signals.
@@ -107,11 +82,6 @@ void sigIntHandler(int signum, siginfo_t *info, void *ptr) {
         exit(EXIT_FAILURE);
     }
 
-    if (dup2(STDIN_FILENO, fdInput) < 0) {
-        write(STDERR_FILENO, DUP_ERROR, sizeof(DUP_ERROR));
-        exit(EXIT_FAILURE);
-    }
-    close(fdInput);
     exit(EXIT_SUCCESS);
 }
 
