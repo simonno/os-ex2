@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     initializeSignalsHandler();
 
     // create a file through which information will be transferred between the children processes.
-    fdConnection = open(CONNECTION_FILE, O_WRONLY | O_CREAT | O_TRUNC | S_IRWXU | S_IXGRP);
+    fdConnection = open(CONNECTION_FILE, O_WRONLY | O_CREAT | O_EXCL, S_IRWXU | S_IXGRP);
     if (fdConnection < 0) {
         write(STDERR_FILENO, OPEN_FILE_ERROR, sizeof(OPEN_FILE_ERROR));
         exit(EXIT_FAILURE);
