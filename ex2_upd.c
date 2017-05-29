@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#define WIN_VAL 2024
+#define WIN_VAL 2048
 #define ROWS 4
 #define COLS 4
 #define CELLS_NUM 16
@@ -60,7 +60,6 @@ int pidForSendingSig;
 unsigned int waitingVal;
 char moveDirection;
 int board[COLS][ROWS];
-//{0,2,4,128,4,0,0,0,4,2,2,32,16,16,0,0};
 
 /*******************************************************************************
 * function name : main                                                         *
@@ -69,13 +68,6 @@ int board[COLS][ROWS];
 * explanation :    run the game.                                               *
 *******************************************************************************/
 int main(int argc, char* argv[]) {
-//    printBoardLineFormat();
-//    //MoveRight();
-//    //MoveLeft();
-//    MoveDown();
-//    printBoardLineFormat();
-//    return 0;
-
     if (argc < 2) {
         write(STDERR_FILENO, NO_PID_ARG, sizeof(NO_PID_ARG));
         exit(EXIT_FAILURE);
@@ -123,13 +115,7 @@ void sigAlarmHandler(int sigNum, siginfo_t *info, void *ptr) {
 
     //check if the player win or lose the game - and print a message accordingly.
     int checkVal = checkWinOrLose();
-    if (checkVal == 1) {
-        printToStdout(WIN_STRING); // print win message.
-        kill(pidForSendingSig, SIGUSR1);
-        exit(EXIT_SUCCESS);
-    } else if (checkVal == -1) {
-        printToStdout(LOSE_STRING); // print lose message.
-        kill(pidForSendingSig, SIGUSR1);
+    if (checkVal == 1 || checkVal == -1) {
         exit(EXIT_SUCCESS);
     }
 }
@@ -174,13 +160,7 @@ void sigUsr1Handler(int sigNum, siginfo_t *info, void *ptr) {
 
     //check if the player win or lose the game - and print a message accordingly.
     int checkVal = checkWinOrLose();
-    if (checkVal == 1) {
-        printToStdout(WIN_STRING); // print win message.
-        kill(pidForSendingSig, SIGUSR1);
-        exit(EXIT_SUCCESS);
-    } else if (checkVal == -1) {
-        printToStdout(LOSE_STRING); // print lose message.
-        kill(pidForSendingSig, SIGUSR1);
+    if (checkVal == 1 || checkVal == -1) {
         exit(EXIT_SUCCESS);
     }
 }

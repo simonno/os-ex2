@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#define WIN_VAL 2048
 #define ROWS 4
 #define COLS 4
 #define CELLS_NUM 16
@@ -24,7 +25,7 @@
 #define WIN_STRING "Congratulations!\n"
 #define LOSE_STRING "Game Over!\n"
 
-void printBoardGraphicFormat(int *pInt);
+int printBoardGraphicFormat(int *pInt);
 
 void initializeSignalsHandler();
 
@@ -99,17 +100,19 @@ void sigUsr1Handler(int signum, siginfo_t *info, void *ptr) {
         exit(EXIT_FAILURE);
     }
 
-    if (strncmp(lineFormat, WIN_STRING, strlen(WIN_STRING)) == 0){
-        printToStdout(WIN_STRING);
-        exit(EXIT_SUCCESS);
-    } else if (strncmp(lineFormat, LOSE_STRING, strlen(LOSE_STRING)) == 0){
-        printToStdout(LOSE_STRING);
-        exit(EXIT_SUCCESS);
-    }
     //print the board in graphic format.
     int board[CELLS_NUM];
     fromStringToMatrix(lineFormat, board);
-    printBoardGraphicFormat(board);
+    int stateVal = printBoardGraphicFormat(board);
+
+    // check if the player win or lose.
+    if (stateVal == 1){
+        printToStdout(WIN_STRING);
+        exit(EXIT_SUCCESS);
+    } else if (stateVal == -1){
+        printToStdout(LOSE_STRING);
+        exit(EXIT_SUCCESS);
+    }
 }
 
 /***************************************************************************
@@ -163,7 +166,9 @@ void initializeSignalsHandler() {
 * output : void.                                                            *
 * explanation : print the board in the graphic format.                      *
 ****************************************************************************/
-void printBoardGraphicFormat(int *board) {
+int printBoardGraphicFormat(int *board) {
+    int stateVal = 0;
+    int numberOfEmptyCells = ROWS * COLS;
     char graphicFormat[BOARD_LENGTH];
     char buffer[7];
     int i, j, num;
@@ -179,14 +184,26 @@ void printBoardGraphicFormat(int *board) {
             if (num == 0) { // case is a 0 print a blank cell.
                 strcat(graphicFormat, "      |");
                 continue;
+            } else if (num == WIN_VAL) {
+                stateVal = 1;
             }
             sprintf(buffer, " %.04d |", num);
             strcat(graphicFormat, buffer);
+            numberOfEmptyCells--;
         }
         strcat(graphicFormat, "\n");
     }
     strcat(graphicFormat, "\n\0");
 
+
+
     // print the board in the graphic format to STDOUT.
     printToStdout(graphicFormat);
+
+    if (stateVal == 0 && numberOfEmptyCells == 0) {
+        // the player lost.
+        return -1;
+    }
+    // check if the board is full.
+    return stateVal;
 }
